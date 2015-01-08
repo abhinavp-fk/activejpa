@@ -3,18 +3,16 @@
  */
 package org.activejpa.enhancer;
 
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.spy;
-import static org.testng.Assert.assertFalse;
-import static org.testng.Assert.assertNotNull;
-import static org.testng.Assert.assertTrue;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.NotFoundException;
-
 import org.activejpa.entity.DummyModel;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
+import static org.testng.Assert.*;
 
 /**
  * @author ganeshs
@@ -51,8 +49,10 @@ public class DomainClassEnhancerTest {
 	public void shouldAddMethodsToDomainClass() throws Exception {
 		CtClass ctClass = classPool.get(DummyModel.class.getName());
 		doReturn(ctClass).when(classPool).get(DummyModel.class.getName());
-		enhancer.enhance(this.getClass().getClassLoader(), DummyModel.class.getName().replace(".", "/"));
-		assertNotNull(ctClass.getMethod("findById", "(Ljava/io/Serializable;)Lorg/activejpa/entity/Model;"));
+        enhancer.enhance(this.getClass().getClassLoader(), DummyModel.class.getName().replace(".", "/"));
+        System.out.println(ctClass.getField("fromDate"));
+
+        assertNotNull(ctClass.getMethod("findById", "(Ljava/io/Serializable;)Lorg/activejpa/entity/Model;"));
 		assertNotNull(ctClass.getMethod("count", "()J"));
 		assertNotNull(ctClass.getMethod("count", "(Lorg/activejpa/entity/Filter;)J"));
 		assertNotNull(ctClass.getMethod("all", "()Ljava/util/List;"));

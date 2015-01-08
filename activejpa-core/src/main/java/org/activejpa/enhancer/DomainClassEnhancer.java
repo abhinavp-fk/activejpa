@@ -5,6 +5,7 @@ package org.activejpa.enhancer;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,6 +16,7 @@ import java.util.Set;
 import javassist.CannotCompileException;
 import javassist.ClassPool;
 import javassist.CtClass;
+import javassist.CtField;
 import javassist.CtMethod;
 import javassist.CtNewMethod;
 import javassist.LoaderClassPath;
@@ -24,6 +26,7 @@ import javax.persistence.Entity;
 
 import org.activejpa.entity.Filter;
 import org.activejpa.entity.Model;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +52,7 @@ public class DomainClassEnhancer {
 				}
 				logger.info("Transforming the class - " + className);
 				ctClass.defrost();
+                addTemporalFields(context, ctClass);
 				createModelMethods(context, ctClass);
 				byte[] byteCode = ctClass.toBytecode();
 				context.addClass(className);
@@ -157,8 +161,78 @@ public class DomainClassEnhancer {
 		}
 		return ctClass.getDeclaredMethod(methodName, paramTypes.toArray(new CtClass[0]));
 	}
-	
-	protected boolean isEntity(CtClass ctClass) throws IOException {
+
+    private void addTemporalFields(Context context, CtClass ctClass )
+    {
+        addField(context, ctClass, "fromDate", "java.sql.Timestamp");
+        createGetterMethod(context,ctClass,  "fromDate", "java.sql.Timestamp");
+        createSetterMethod(context,ctClass,  "fromDate", "java.sql.Timestamp");
+        addField(context, ctClass, "toDate", "java.sql.Timestamp");
+        createGetterMethod(context,ctClass,  "toDate", "java.sql.Timestamp");
+        createSetterMethod(context,ctClass,  "toDate", "java.sql.Timestamp");
+    }
+
+    private void addField(Context context, CtClass ctClass, String fieldName, String dataType)
+    {
+        try
+        {
+            CtClass dateType = context.getCtClass(dataType);
+            CtField ctField = new CtField(dateType, fieldName, ctClass);
+            ctClass.addField(ctField);
+        }
+        catch (NotFoundException e)
+        {
+            e.printStackTrace();
+        }
+        catch (CannotCompileException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    private void createGetterMethod(Context context, CtClass ctClass, String fieldName, String fieldType)
+    {
+        logger.info("Creating the method - get" + fieldName + " under the class - " + ctClass.getName());
+        StringWriter writer = new StringWriter();
+        String methodName  = "get"+fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+        writer.append("public ").append(fieldType).append(" ").append(methodName).append("(");
+        writer.append(") {");
+
+        writer.append("return this."+fieldName+";}");
+        CtMethod method = null;
+        try
+        {
+            method = CtNewMethod.make(writer.toString(), ctClass);
+            ctClass.addMethod(method);
+        }
+        catch (CannotCompileException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    private void createSetterMethod(Context context, CtClass ctClass, String fieldName, String fieldType)
+    {
+        logger.info("Creating the method - set" + fieldName + " under the class - " + ctClass.getName());
+        StringWriter writer = new StringWriter();
+        String methodName  = "set"+fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+        writer.append("public void ").append(methodName).append("(");
+        writer.append(fieldType).append(" ").append(fieldName);
+        writer.append(") {");
+        writer.append("this."+fieldName+"="+fieldName+";}");
+        CtMethod method = null;
+        try
+        {
+            method = CtNewMethod.make(writer.toString(), ctClass);
+            ctClass.addMethod(method);
+        }
+        catch (CannotCompileException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    protected boolean isEntity(CtClass ctClass) throws IOException {
 		return ctClass.hasAnnotation(Entity.class);
 	}
 	
